@@ -1,0 +1,45 @@
+---
+- hosts: all
+  tasks:
+  - name: Upgrade all apt packages
+    apt: upgrade=dist force_apt_get=yes
+  - name: Install curl
+    apt: pkg=curl update_cache=yes
+  - name: Start ufw
+    ufw: state=enabled policy=deny
+  - name: Allow 80 port
+    ufw: rule=allow port=80 proto=tcp
+  - name: Allow 8080 port
+    ufw: rule=allow port=8080 proto=tcp
+  - name: Allow 1834 port
+    ufw: rule=allow port=1834 proto=tcp
+  - name: Install docker 1
+    apt_repository: repo='deb https://get.docker.com docker main' state=present
+  - name: Install docker 2
+    apt: pkg=lxc-docker update_cache=yes
+  - name: Run the scripts docker-compose
+    local_action: command sudo sh /wsr-skillcloud/docker-compose.sh
+  - name: Restart ssh
+    service: name=ssh state=restarted
+  - name: Restart ufw
+    service: name=ufw state=restarted
+  - name: Reboot
+    reboot:
+      coonect_timeout: 5
+      reboot_timeout: 600
+      pre_reboot_delay: 0
+      post_reboot_delay: 30
+      test_command: whoami
+  - name: Create directory
+    file:
+      path: /skillcloud-nginx
+      state: directory
+  - name: Copy files
+    copy:
+      src: '{{item}}'
+      dest: '/skillcloud-nginx'
+    loop:
+    - /wsr-skillcloud/index.html
+    - /wsr-skillcloud/nginx.conf
+    - /wsr-skillcloud/Dockerfile-balance
+    - /wsr-skillcloud/Dockerfile-site
